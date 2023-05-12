@@ -1,9 +1,8 @@
 package com.yubi.selfserveloginrbackservice.model;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -17,10 +16,11 @@ import lombok.NoArgsConstructor;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class UserInfo {
 
-    @JsonAlias("ca_user_id")
+    @JsonProperty("ca_user_id")
     private String caUserId;
-    @JsonAlias("entity_id")
+    @JsonProperty("entity_id")
     private String entityId;
-    @JsonAlias("group_id")
+    @JsonProperty("group_id")
     private String groupId;
+
 }
