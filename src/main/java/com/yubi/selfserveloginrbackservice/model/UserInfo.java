@@ -22,5 +22,7 @@ public class UserInfo {
     private String entityId;
     @JsonProperty("group_id")
     private String groupId;
+    @JsonProperty("product_id")
+    private String productId;
 
 }
