@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import redis.clients.jedis.Jedis;
 
 @RestController
 public class AuthController {
@@ -24,6 +25,8 @@ public class AuthController {
     @Value("${origin}")
     private String origin;
 
+    @Value("${spring.redis.host}")
+    private String redisHostname;
 
     @PostMapping("/getUserPermissions")
     public ResponseEntity<Object> getPermissions(@RequestBody UserInfo userInfo,
@@ -57,6 +60,13 @@ public class AuthController {
 
         // Send the HTTP GET request
         ResponseEntity<Object> responseEntity = restTemplate.exchange(requestEntity, Object.class);
+
+        // Store the response in Redis
+        String caUserId = userInfo.getCaUserId();
+        Jedis jedis = new Jedis(redisHostname); // Replace with the Redis server address if needed
+        int expiryTimeInSeconds = 3600; // Set the expiry time (e.g., 1 hour)
+        jedis.setex(caUserId, expiryTimeInSeconds, responseEntity.getBody().toString());
+        jedis.close();
         return responseEntity;
     }
 
