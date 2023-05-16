@@ -28,6 +28,9 @@ public class AuthController {
     @Value("${origin}")
     private String origin;
 
+    @Value("${url.prefix}")
+    private String uriPrefix;
+
     @Value("${spring.redis.host}")
     private String redisHostname;
 
@@ -70,7 +73,7 @@ public class AuthController {
         ResponseEntity<Object> responseEntity = null;
 
         try {
-            uri = new URI("https://auth-qa-api.go-yubi.in/users/" + "6360f976d964090043b64dde"
+            uri = new URI(uriPrefix + "/users/" + userInfo.getLocalUserId()
                 + "/all_permissions_web?product_id=" + productId + "&entity_id=" + entityId
                 + "&group_id=" + groupId);
             log.info("Sending request to: {}", uri);

@@ -18,6 +18,8 @@ public class UserInfo {
 
     @JsonProperty("ca_user_id")
     private String caUserId;
+    @JsonProperty("local_user_id")
+    private String localUserId;
     @JsonProperty("entity_id")
     private String entityId;
     @JsonProperty("group_id")
