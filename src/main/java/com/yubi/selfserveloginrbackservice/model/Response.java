@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
     setterVisibility = JsonAutoDetect.Visibility.NONE)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Generated
-public class ErrorResponse {
+public class Response {
 
   @JsonAlias("status")
   private String status;

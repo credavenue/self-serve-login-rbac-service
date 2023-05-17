@@ -1,12 +1,14 @@
 package com.yubi.selfserveloginrbackservice.controller;
 
 import com.yubi.selfserveloginrbackservice.constant.Constants;
-import com.yubi.selfserveloginrbackservice.model.ErrorResponse;
+import com.yubi.selfserveloginrbackservice.model.Response;
 import com.yubi.selfserveloginrbackservice.model.UserInfo;
 import java.net.URI;
 import java.net.URISyntaxException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -38,6 +40,9 @@ public class AuthController {
     @Value("${spring.redis.host}")
     private String redisHostname;
 
+    @Autowired
+    RedisTemplate redisTemplate;
+
     @PostMapping("/getUserPermissions")
     public ResponseEntity<Object> getPermissions(@RequestBody UserInfo userInfo,
         @RequestHeader String authorization,
@@ -46,7 +51,7 @@ public class AuthController {
         @RequestHeader String currentGroup) {
         RestTemplate restTemplate = new RestTemplate();
         String caUserId = userInfo.getCaUserId();
-        ErrorResponse errorResponse = new ErrorResponse();
+        Response response = new Response();
 
         // Check if the data exists in Redis
         String cachedData;
@@ -95,30 +100,30 @@ public class AuthController {
                 log.info("Response stored in Redis for caUserId: {}", caUserId);
             } else {
                 log.warn("Response entity or its body is null");
-                errorResponse.setMessage("Response entity or its body is null");
-                errorResponse.setStatus(Constants.FAILURE);
-                errorResponse.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+                response.setMessage("Response entity or its body is null");
+                response.setStatus(Constants.FAILURE);
+                response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
             }
 
         } catch (URISyntaxException ex) {
             log.error("Invalid URI syntax: {}", ex.getMessage());
-            errorResponse.setMessage("Invalid URI syntax: " + ex.getMessage());
-            errorResponse.setStatus(Constants.FAILURE);
-            errorResponse.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            response.setMessage("Invalid URI syntax: " + ex.getMessage());
+            response.setStatus(Constants.FAILURE);
+            response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         } catch (HttpStatusCodeException ex) {
             log.error("HTTP request failed with status code {}: {}", ex.getStatusCode(), ex.getMessage());
-            errorResponse.setMessage("HTTP request failed with status code " + ex.getStatusCode() + ": " + ex.getMessage());
-            errorResponse.setStatus(Constants.FAILURE);
-            errorResponse.setStatusCode(ex.getStatusCode().value());
-            return ResponseEntity.status(ex.getStatusCode()).body(errorResponse);
+            response.setMessage("HTTP request failed with status code " + ex.getStatusCode() + ": " + ex.getMessage());
+            response.setStatus(Constants.FAILURE);
+            response.setStatusCode(ex.getStatusCode().value());
+            return ResponseEntity.status(ex.getStatusCode()).body(response);
         } catch (Exception ex) {
             log.error("Exception occurred while sending request to platform: {}", ex.getMessage());
-            errorResponse.setMessage("Exception occurred while sending request to platform: " + ex.getMessage());
-            errorResponse.setStatus(Constants.FAILURE);
-            errorResponse.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            response.setMessage("Exception occurred while sending request to platform: " + ex.getMessage());
+            response.setStatus(Constants.FAILURE);
+            response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
 
         return responseEntity;
@@ -126,7 +131,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Object> logout(@RequestBody UserInfo userInfo) {
-        ErrorResponse errorResponse = new ErrorResponse();
+        Response response = new Response();
         String caUserId = userInfo.getCaUserId();
         try (Jedis jedis = new Jedis(redisHostname)) {
             Long deletedCount = jedis.del(caUserId);
@@ -134,28 +139,28 @@ public class AuthController {
                 // TODO: Perform other logout-related tasks
 
                 log.info("Cache data deleted for caUserId: {}", caUserId);
-                errorResponse.setMessage("Logout successful");
-                errorResponse.setStatus(Constants.SUCCESS);
-                errorResponse.setStatusCode(HttpStatus.OK.value());
-                return ResponseEntity.ok().body(errorResponse);
+                response.setMessage("Logout successful");
+                response.setStatus(Constants.SUCCESS);
+                response.setStatusCode(HttpStatus.OK.value());
+                return ResponseEntity.ok().body(response);
             } else {
                 log.warn("No cache data found for caUserId: {}", caUserId);
-                errorResponse.setMessage("No cache data found for the user");
-                errorResponse.setStatus(Constants.SUCCESS);
-                errorResponse.setStatusCode(HttpStatus.OK.value());
-                return ResponseEntity.ok().body(errorResponse);
+                response.setMessage("No cache data found for the user");
+                response.setStatus(Constants.SUCCESS);
+                response.setStatusCode(HttpStatus.OK.value());
+                return ResponseEntity.ok().body(response);
             }
         } catch (JedisConnectionException ex) {
             log.error("Exception occurred while connecting to Redis: {}", ex.getMessage());
-            errorResponse.setMessage("Error connecting to Redis");
+            response.setMessage("Error connecting to Redis");
         } catch (Exception ex) {
             log.error("Exception occurred while deleting cache data for caUserId: {}", caUserId);
-            errorResponse.setMessage("Error occurred during logout");
+            response.setMessage("Error occurred during logout");
         }
 
-        errorResponse.setStatus(Constants.FAILURE);
-        errorResponse.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        response.setStatus(Constants.FAILURE);
+        response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
 
