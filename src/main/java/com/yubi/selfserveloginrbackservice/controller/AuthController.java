@@ -46,6 +46,7 @@ public class AuthController {
         @RequestHeader String currentGroup) {
         RestTemplate restTemplate = new RestTemplate();
         String caUserId = userInfo.getCaUserId();
+        ErrorResponse errorResponse = new ErrorResponse();
 
         // Check if the data exists in Redis
         String cachedData;
@@ -73,8 +74,8 @@ public class AuthController {
         headers.add("mfa-token", mfaToken);
         headers.add("origin", origin);
 
-        URI uri = null;
-        ResponseEntity<Object> responseEntity = null;
+        URI uri;
+        ResponseEntity<Object> responseEntity;
 
         try {
             uri = new URI(uriPrefix + "/users/" + userInfo.getLocalUserId()
@@ -88,26 +89,40 @@ public class AuthController {
             if (responseEntity != null && responseEntity.getBody() != null) {
                 // Store the response in Redis
                 try (Jedis jedis = new Jedis(redisHostname)) {
-                    int expiryTimeInSeconds = 3600;
+                    int expiryTimeInSeconds = 3600;//TODO need make dynamic
                     jedis.setex(caUserId, expiryTimeInSeconds, responseEntity.getBody().toString());
                 }
                 log.info("Response stored in Redis for caUserId: {}", caUserId);
             } else {
                 log.warn("Response entity or its body is null");
+                errorResponse.setMessage("Response entity or its body is null");
+                errorResponse.setStatus(Constants.FAILURE);
+                errorResponse.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
             }
 
         } catch (URISyntaxException ex) {
             log.error("Invalid URI syntax: {}", ex.getMessage());
+            errorResponse.setMessage("Invalid URI syntax: " + ex.getMessage());
+            errorResponse.setStatus(Constants.FAILURE);
+            errorResponse.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         } catch (HttpStatusCodeException ex) {
             log.error("HTTP request failed with status code {}: {}", ex.getStatusCode(), ex.getMessage());
+            errorResponse.setMessage("HTTP request failed with status code " + ex.getStatusCode() + ": " + ex.getMessage());
+            errorResponse.setStatus(Constants.FAILURE);
+            errorResponse.setStatusCode(ex.getStatusCode().value());
+            return ResponseEntity.status(ex.getStatusCode()).body(errorResponse);
         } catch (Exception ex) {
             log.error("Exception occurred while sending request to platform: {}", ex.getMessage());
+            errorResponse.setMessage("Exception occurred while sending request to platform: " + ex.getMessage());
+            errorResponse.setStatus(Constants.FAILURE);
+            errorResponse.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
 
         return responseEntity;
     }
-
-    //TODO: Invalidate cache, Logout API,
 
     @PostMapping("/logout")
     public ResponseEntity<Object> logout(@RequestBody UserInfo userInfo) {
