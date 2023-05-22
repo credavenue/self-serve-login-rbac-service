@@ -1,12 +1,17 @@
 package com.yubi.selfserveloginrbackservice.controller;
 
+import com.yubi.selfserveloginrbackservice.constant.Constants;
+import com.yubi.selfserveloginrbackservice.model.Response;
 import com.yubi.selfserveloginrbackservice.model.UserInfo;
 import java.net.URI;
 import java.net.URISyntaxException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.exceptions.JedisConnectionException;
 
 @RestController
 @Slf4j
@@ -34,6 +40,9 @@ public class AuthController {
     @Value("${spring.redis.host}")
     private String redisHostname;
 
+    @Autowired
+    RedisTemplate redisTemplate;
+
     @PostMapping("/getUserPermissions")
     public ResponseEntity<Object> getPermissions(@RequestBody UserInfo userInfo,
         @RequestHeader String authorization,
@@ -42,6 +51,7 @@ public class AuthController {
         @RequestHeader String currentGroup) {
         RestTemplate restTemplate = new RestTemplate();
         String caUserId = userInfo.getCaUserId();
+        Response response = new Response();
 
         // Check if the data exists in Redis
         String cachedData;
@@ -69,8 +79,8 @@ public class AuthController {
         headers.add("mfa-token", mfaToken);
         headers.add("origin", origin);
 
-        URI uri = null;
-        ResponseEntity<Object> responseEntity = null;
+        URI uri;
+        ResponseEntity<Object> responseEntity;
 
         try {
             uri = new URI(uriPrefix + "/users/" + userInfo.getLocalUserId()
@@ -84,24 +94,76 @@ public class AuthController {
             if (responseEntity != null && responseEntity.getBody() != null) {
                 // Store the response in Redis
                 try (Jedis jedis = new Jedis(redisHostname)) {
-                    int expiryTimeInSeconds = 3600;
+                    int expiryTimeInSeconds = 3600;//TODO need make dynamic
                     jedis.setex(caUserId, expiryTimeInSeconds, responseEntity.getBody().toString());
                 }
                 log.info("Response stored in Redis for caUserId: {}", caUserId);
             } else {
                 log.warn("Response entity or its body is null");
+                response.setMessage("Response entity or its body is null");
+                response.setStatus(Constants.FAILURE);
+                response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
             }
 
         } catch (URISyntaxException ex) {
             log.error("Invalid URI syntax: {}", ex.getMessage());
+            response.setMessage("Invalid URI syntax: " + ex.getMessage());
+            response.setStatus(Constants.FAILURE);
+            response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         } catch (HttpStatusCodeException ex) {
             log.error("HTTP request failed with status code {}: {}", ex.getStatusCode(), ex.getMessage());
+            response.setMessage("HTTP request failed with status code " + ex.getStatusCode() + ": " + ex.getMessage());
+            response.setStatus(Constants.FAILURE);
+            response.setStatusCode(ex.getStatusCode().value());
+            return ResponseEntity.status(ex.getStatusCode()).body(response);
         } catch (Exception ex) {
             log.error("Exception occurred while sending request to platform: {}", ex.getMessage());
+            response.setMessage("Exception occurred while sending request to platform: " + ex.getMessage());
+            response.setStatus(Constants.FAILURE);
+            response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
 
         return responseEntity;
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Object> logout(@RequestBody UserInfo userInfo) {
+        Response response = new Response();
+        String caUserId = userInfo.getCaUserId();
+        try (Jedis jedis = new Jedis(redisHostname)) {
+            Long deletedCount = jedis.del(caUserId);
+            if (deletedCount != null && deletedCount > 0) {
+                // TODO: Perform other logout-related tasks
+
+                log.info("Cache data deleted for caUserId: {}", caUserId);
+                response.setMessage("Logout successful");
+                response.setStatus(Constants.SUCCESS);
+                response.setStatusCode(HttpStatus.OK.value());
+                return ResponseEntity.ok().body(response);
+            } else {
+                log.warn("No cache data found for caUserId: {}", caUserId);
+                response.setMessage("No cache data found for the user");
+                response.setStatus(Constants.SUCCESS);
+                response.setStatusCode(HttpStatus.OK.value());
+                return ResponseEntity.ok().body(response);
+            }
+        } catch (JedisConnectionException ex) {
+            log.error("Exception occurred while connecting to Redis: {}", ex.getMessage());
+            response.setMessage("Error connecting to Redis");
+        } catch (Exception ex) {
+            log.error("Exception occurred while deleting cache data for caUserId: {}", caUserId);
+            response.setMessage("Error occurred during logout");
+        }
+
+        response.setStatus(Constants.FAILURE);
+        response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+
 
 
 }
