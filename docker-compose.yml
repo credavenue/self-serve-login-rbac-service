@@ -1,0 +1,26 @@
+version: '3.7'
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+    networks:
+      - redis_network
+
+  login_rbac_service:
+    build: .
+    container_name: login_rbac_service
+    depends_on:
+      - redis
+    hostname: login.rbac
+    environment:
+      - CONTROLLER_ENABLED_FLAG=true
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_REDIS_HOST=redis
+    ports:
+      - 8080:8080
+    networks:
+      - redis_network
+
+networks:
+  redis_network:
