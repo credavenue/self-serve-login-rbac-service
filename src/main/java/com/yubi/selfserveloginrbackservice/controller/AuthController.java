@@ -48,6 +48,8 @@ public class AuthController {
 
     private Jedis jedis;
 
+    private RestTemplate restTemplate;
+
     @PostConstruct
     public void initializeJedis() {
         jedis = new Jedis(redisHostname);
@@ -60,7 +62,6 @@ public class AuthController {
         @RequestHeader String mfaToken,
         @RequestHeader String currentEntityId,
         @RequestHeader String currentGroup) {
-        RestTemplate restTemplate = new RestTemplate();
         String caUserId = userInfo.getCaUserId();
         Response response = new Response();
 
