@@ -1,8 +1,8 @@
 package com.yubi.selfserveloginrbackservice.model;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import lombok.Data;
 import lombok.Generated;
@@ -18,22 +18,22 @@ import lombok.NoArgsConstructor;
 @Generated
 public class Response {
 
-  @JsonAlias("status")
+  @JsonProperty("status")
   private String status;
 
-  @JsonAlias("statusCode")
+  @JsonProperty("statusCode")
   private long statusCode;
 
-  @JsonAlias("userId")
+  @JsonProperty("userId")
   private String userId;
 
-  @JsonAlias("message")
+  @JsonProperty("message")
   private String message;
 
-  @JsonAlias("data")
+  @JsonProperty("data")
   private List<Object> data;
 
-  @JsonAlias("errors")
+  @JsonProperty("errors")
   List<ErrorObject> errors;
 
 }

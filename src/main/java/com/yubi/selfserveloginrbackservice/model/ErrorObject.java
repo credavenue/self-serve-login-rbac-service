@@ -1,9 +1,9 @@
 package com.yubi.selfserveloginrbackservice.model;
 
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.Generated;
 import lombok.NoArgsConstructor;
@@ -17,10 +17,10 @@ import lombok.NoArgsConstructor;
 @Generated
 public class ErrorObject {
 
-  @JsonAlias("code")
+  @JsonProperty("code")
   private String code;
 
-  @JsonAlias("message")
+  @JsonProperty("message")
   private String message;
 
 }

@@ -15,10 +15,10 @@ services:
     hostname: login.rbac
     environment:
       - CONTROLLER_ENABLED_FLAG=true
-      - SPRING_PROFILES_ACTIVE=dev
+#      - SPRING_PROFILES_ACTIVE=dev
       - SPRING_REDIS_HOST=redis
     ports:
-      - 8080:8080
+      - 8080:8012
     networks:
       - redis_network
 
