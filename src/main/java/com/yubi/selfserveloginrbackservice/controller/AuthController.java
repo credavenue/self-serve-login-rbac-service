@@ -1,5 +1,7 @@
 package com.yubi.selfserveloginrbackservice.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yubi.selfserveloginrbackservice.constant.Constants;
 import com.yubi.selfserveloginrbackservice.model.Response;
 import com.yubi.selfserveloginrbackservice.model.UserInfo;
@@ -62,11 +64,24 @@ public class AuthController {
         String caUserId = userInfo.getCaUserId();
         Response response = new Response();
 
+
+        ObjectMapper objectMapper = new ObjectMapper();
         // Check if the data exists in Redis
         String cachedData = jedis.get(caUserId);
         if (cachedData != null) {
             log.info("Cached data found for caUserId: {}", caUserId);
-            return ResponseEntity.ok().body(cachedData);
+
+            // Deserialize the cachedData string into a JSON object
+            try {
+                Object jsonPayload = objectMapper.readValue(cachedData, Object.class);
+                return ResponseEntity.ok().body(jsonPayload);
+            } catch (Exception e) {
+                log.error("Failed to deserialize JSON payload from Redis: {}", e.getMessage());
+                response.setMessage("Failed to deserialize JSON payload from Redis");
+                response.setStatus(Constants.FAILURE);
+                response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
         }
 
         // Set query parameters
@@ -97,9 +112,10 @@ public class AuthController {
             responseEntity = restTemplate.exchange(requestEntity, Object.class);
 
             if (responseEntity != null && responseEntity.getBody() != null) {
-                // Store the response in Redis
+                // Store the response in Redis as a serialized JSON string
+                String serializedPayload = objectMapper.writeValueAsString(responseEntity.getBody());
                 int expiryTimeInSeconds = 3600; // TODO: Make it dynamic
-                jedis.setex(caUserId, expiryTimeInSeconds, responseEntity.getBody().toString());
+                jedis.setex(caUserId, expiryTimeInSeconds, serializedPayload);
                 log.info("Response stored in Redis for caUserId: {}", caUserId);
             } else {
                 log.warn("Response entity or its body is null");
@@ -115,18 +131,8 @@ public class AuthController {
             response.setStatus(Constants.FAILURE);
             response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        } catch (HttpStatusCodeException ex) {
-            log.error("HTTP request failed with status code {}: {}", ex.getStatusCode(), ex.getMessage());
-            response.setMessage("HTTP request failed with status code " + ex.getStatusCode() + ": " + ex.getMessage());
-            response.setStatus(Constants.FAILURE);
-            response.setStatusCode(ex.getStatusCode().value());
-            return ResponseEntity.status(ex.getStatusCode()).body(response);
-        } catch (Exception ex) {
-            log.error("Exception occurred while sending request to platform: {}", ex.getMessage());
-            response.setMessage("Exception occurred while sending request to platform: " + ex.getMessage());
-            response.setStatus(Constants.FAILURE);
-            response.setStatusCode(HttpStatus.INTERNAL_SERVER_ERROR.value());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         } finally {
             if (jedis != null) {
                 jedis.close();
@@ -135,6 +141,7 @@ public class AuthController {
 
         return responseEntity;
     }
+
 
     @PostMapping("/logout")
     public ResponseEntity<Object> logout(@RequestBody UserInfo userInfo) {

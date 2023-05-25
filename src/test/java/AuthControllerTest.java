@@ -115,7 +115,6 @@ public class AuthControllerTest {
 
         // Verify Redis cache interaction
         verify(jedis).get(("testCaUserId"));
-//        verify(jedis).setex(("testCaUserId"), anyInt(), (expectedResponseEntity.getBody().toString()));
     }
 
 
@@ -147,9 +146,9 @@ public class AuthControllerTest {
 //        verify(restTemplate).exchange(Mockito.any(RequestEntity.class), Mockito.eq(Object.class));
 
 //        Mockito.verifyNoInteractions(jedis); // Redis setex should not be called
-//        Assertions.assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-//        Assertions.assertNull(response.getBody());
-//        Assertions.assertEquals(Constants.FAILURE, ((Response) response.getBody()).getStatus());
+        Assertions.assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        Assertions.assertNotNull(response.getBody());
+        Assertions.assertEquals(Constants.FAILURE, ((Response) response.getBody()).getStatus());
     }
 
 
