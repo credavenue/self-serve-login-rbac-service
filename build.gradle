@@ -1,8 +1,23 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.0.7-SNAPSHOT'
-	id 'io.spring.dependency-management' version '1.1.0'
+    id 'java'
+    id 'org.springframework.boot' version '2.7.8'
+    id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+    id 'jacoco'
+    id "org.sonarqube" version "3.0"
 }
+
+jacoco {
+    toolVersion = "0.8.8"
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled true
+        csv.enabled true
+        html.outputLocation = layout.buildDirectory.dir('jacocoHtml')
+    }
+}
+
 
 group = 'com.yubi'
 version = '0.0.1-SNAPSHOT'
@@ -14,6 +29,16 @@ configurations {
 	}
 }
 
+
+sonarqube {
+    properties {
+        property "sonar.java.coveragePlugin", "jacoco"
+//		property "sonar.host.url", "http://localhost:9000"
+        property "sonar.coverage.jacoco.xmlReportPath", "${buildDir}/reports/jacoco.xml"
+    }
+}
+
+
 repositories {
 	mavenCentral()
 	maven { url 'https://repo.spring.io/milestone' }
@@ -21,11 +46,23 @@ repositories {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
-	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation('org.springframework.boot:spring-boot-starter-data-redis') {
+        exclude group: 'io.lettuce', module: 'lettuce-core'
+    }
+    implementation 'redis.clients:jedis:3.7.0'
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation ('org.springframework.boot:spring-boot-starter-test'){
+        exclude group : 'org.junit.vintage', 'module':'junit-vintage-engine'
+    }
+    implementation group: 'io.springfox', name: 'springfox-boot-starter', version: '3.0.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+    testImplementation 'org.mockito:mockito-core:4.2.0'
+    testImplementation 'junit:junit:4.13.1'
+
 }
 
 tasks.named('test') {
